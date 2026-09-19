@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>一维水驱 Buckley–Leverett / Welge 分流台</title>
+<style>
+  :root { --ink:#1f2933; --muted:#697586; --line:#cbd2d9; --accent:#0b6bcb;
+          --shock:#d64545; --rare:#2f9e44; --bg:#f7f8fa; --card:#fff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: "PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+         color:var(--ink); background:var(--bg); }
+  header { padding:14px 22px; background:#0f2b46; color:#fff; }
+  header h1 { margin:0; font-size:18px; font-weight:600; }
+  header p { margin:4px 0 0; font-size:12.5px; opacity:.8; }
+  .layout { display:grid; grid-template-columns:300px 1fr; gap:16px; padding:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:14px 16px; }
+  .card h2 { font-size:14px; margin:0 0 10px; }
+  label { display:block; font-size:12px; color:var(--muted); margin:9px 0 3px; }
+  select, input { width:100%; padding:6px 8px; font-size:13px; border:1px solid var(--line);
+                  border-radius:6px; background:#fff; color:var(--ink); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  button { margin-top:14px; width:100%; padding:9px; border:0; border-radius:7px;
+           background:var(--accent); color:#fff; font-size:14px; cursor:pointer; }
+  button.secondary { background:#e4e7eb; color:var(--ink); }
+  button:hover { filter:brightness(1.05); }
+  .stats { margin-top:12px; font-size:12.5px; line-height:1.75; }
+  .stats b { font-variant-numeric: tabular-nums; }
+  .tag { display:inline-block; min-width:92px; color:var(--muted); }
+  .error { display:none; margin-top:10px; padding:9px 11px; font-size:12.5px;
+           background:#fdecec; border:1px solid #f3b3b3; color:#a12323;
+           border-radius:7px; white-space:pre-wrap; }
+  .charts { display:grid; grid-template-rows:1fr 1fr; gap:16px; }
+  canvas { width:100%; display:block; }
+  .hint { font-size:11.5px; color:var(--muted); margin-top:6px; }
+  .legend { font-size:11.5px; color:var(--muted); display:flex; gap:14px;
+            margin-top:4px; flex-wrap:wrap; }
+  .swatch { display:inline-block; width:14px; height:3px; vertical-align:middle;
+            margin-right:4px; border-radius:2px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>一维水驱分析台 · Buckley–Leverett 分流与 Welge 作图</h1>
+  <p>后端按 Corey 相对渗透率计算含水率分流 f(Sw)，从束缚水点 (Swc, 0) 作切线定激波前缘 Swf，激波后按 df/dSw 铺稀疏波。本页只呈现，不作任何切点计算。</p>
+</header>
+
+<div class="layout">
+  <div class="card">
+    <h2>物性档</h2>
+    <label>具名档（选择后自动求解）</label>
+    <select id="profileSelect"></select>
+
+    <h2 style="margin-top:18px">当次物性参数</h2>
+    <div class="grid2">
+      <div><label>水相粘度 μw</label><input id="mu_w" type="number" step="any"></div>
+      <div><label>油相粘度 μo</label><input id="mu_o" type="number" step="any"></div>
+      <div><label>束缚水 Swc</label><input id="swc" type="number" step="any"></div>
+      <div><label>残余油 Sor</label><input id="sor" type="number" step="any"></div>
+      <div><label>水端 krw0</label><input id="krw0" type="number" step="any"></div>
+      <div><label>油端 kro0</label><input id="kro0" type="number" step="any"></div>
+      <div><label>水幂次 nw</label><input id="nw" type="number" step="any"></div>
+      <div><label>油幂次 no</label><input id="no" type="number" step="any"></div>
+    </div>
+    <button id="solveInline">按当次参数求解</button>
+    <button id="saveProfile" class="secondary">存为具名档…</button>
+
+    <div class="stats" id="stats"></div>
+    <div class="error" id="error"></div>
+    <p class="hint">试一下：把 μw 调大（μw/μo 上升、流度比变有利），Swf 升高、前缘变钝；只加大 Sor，末端 1−Sor 左移、可动油变少。</p>
+  </div>
+
+  <div class="charts">
+    <div class="card">
+      <h2>含水率分流曲线 f(Sw) 与 Welge 切线</h2>
+      <canvas id="fracCanvas" height="330"></canvas>
+      <div class="legend">
+        <span><span class="swatch" style="background:#0b6bcb"></span>f(Sw)</span>
+        <span><span class="swatch" style="background:#d64545"></span>Welge 切线</span>
+        <span><span class="swatch" style="background:#2f9e44"></span>切点 Swf</span>
+        <span><span class="swatch" style="background:#888"></span>末端 1−Sor</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>ξ = x/t 上的饱和度剖面（竖直激波 + 后方稀疏波）</h2>
+      <canvas id="profCanvas" height="330"></canvas>
+      <div class="legend">
+        <span><span class="swatch" style="background:#0b6bcb"></span>Sw(ξ)</span>
+        <span><span class="swatch" style="background:#d64545"></span>激波 ξ=V</span>
+        <span><span class="swatch" style="background:#2f9e44"></span>稀疏波段</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
