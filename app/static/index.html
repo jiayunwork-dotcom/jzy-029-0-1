@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>一维水驱 · Buckley–Leverett / Welge 剖面台</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>一维水驱剖面台</h1>
+    <p class="sub">
+      Buckley–Leverett 分流曲线 + Welge 切线作图。切点 <code>Swf</code>、激波速度
+      <code>ξ_f</code> 全部由后端求解，页面只负责画。
+    </p>
+  </header>
+
+  <main>
+    <section class="panel controls">
+      <h2>物性</h2>
+      <label>具名档
+        <select id="deck-select"></select>
+      </label>
+      <div class="grid">
+        <label>水相粘度 μw<input type="number" step="any" min="0" id="mu_w"></label>
+        <label>油相粘度 μo<input type="number" step="any" min="0" id="mu_o"></label>
+        <label>束缚水 Swc<input type="number" step="any" min="0" max="1" id="swc"></label>
+        <label>残余油 Sor<input type="number" step="any" min="0" max="1" id="sor"></label>
+        <label>水端 krw0<input type="number" step="any" min="0" max="1" id="krw0"></label>
+        <label>油端 kro0<input type="number" step="any" min="0" max="1" id="kro0"></label>
+        <label>水幂次 nw<input type="number" step="any" min="0" id="nw"></label>
+        <label>油幂次 no<input type="number" step="any" min="0" id="no"></label>
+      </div>
+      <div class="ratio">
+        水/油粘度比 μw/μo = <b id="ratio-mu">–</b>
+        ｜经典流度比 M=(krw0·μo)/(kro0·μw)。
+        <b>M 减小（μw/μo 上升：μw↑ 或 μo↓）→ Swf 升高、前缘变钝；
+        Sor 加大 → 末端 1−Sor 左移。</b>
+      </div>
+      <button id="solve-btn">重新求解</button>
+      <button id="save-btn" class="secondary" title="把当前参数登记为具名档">另存为档…</button>
+      <div id="error" class="error" hidden></div>
+      <div id="summary" class="summary"></div>
+    </section>
+
+    <section class="panel">
+      <h2>分流函数与 Welge 切线</h2>
+      <div id="chart-ff"></div>
+      <p class="caption">
+        实线 f(Sw) 只画在可动区间 [Swc, 1−Sor] 上；虚线从 (Swc, 0) 切向曲线，
+        切点为 <b>Swf</b>，竖点线标出末端 1−Sor。
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>ξ 上的饱和度剖面 Sw(ξ)</h2>
+      <div id="chart-prof"></div>
+      <p class="caption">
+        前缘是竖直激波（不是斜坡）；激波后方 ξ=df/dSw 铺出稀疏波，
+        前方保持 Swc。改 μo 或 Sor 后重新求解即可对比。
+      </p>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
